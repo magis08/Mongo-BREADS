@@ -1,8 +1,8 @@
+// models/Todo.js
 import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
 
-// Schema untuk Todo
 const todoSchema = new Schema({
     title: {
         type: String,
@@ -11,7 +11,7 @@ const todoSchema = new Schema({
     },
     complete: {
         type: Boolean,
-        default: false, // Default status adalah belum selesai
+        default: false,
     },
     deadline: {
         type: Date,
@@ -19,12 +19,11 @@ const todoSchema = new Schema({
     },
     executor: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User', // Mengacu pada model User
+        ref: 'User',
         required: true,
     },
 }, { timestamps: true });
 
-// Model Todo
 const Todo = mongoose.model('Todo', todoSchema);
 
-export default Todo;
+export default Todo;  // Pastikan menggunakan export default

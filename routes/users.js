@@ -1,89 +1,107 @@
 import express from 'express';
-import User from '../models/user.js';  // Pastikan menambahkan .js untuk file lokal
+import User from '../models/user.js'; // Pastikan path model User sudah benar
 import { ObjectId } from 'mongodb';
 
 const router = express.Router();
 
-// Menampilkan semua pengguna dengan pagination (API GET /users)
+// Fetch users with pagination, search query, and sorting
 router.get('/', async (req, res, next) => {
-  const page = parseInt(req.query.page) || 1;  // Mengambil nilai halaman, default ke 1 jika tidak ada
-  const limit = 5;  // Menentukan berapa banyak data yang ditampilkan per halaman
-  const skip = (page - 1) * limit;  // Menghitung data yang perlu dilewati berdasarkan halaman
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 5; // Ambil limit dari query string, default ke 5
+        const skip = (page - 1) * limit;
+        const searchQuery = req.query.search || ''; // Ambil query pencarian jika ada
+        const sortBy = req.query.sortBy || 'name'; // Default sort by 'name'
+        const sortOrder = req.query.sortOrder === 'desc' ? -1 : 1; // Default sort order is 'asc'
 
-  try {
-    // Mengambil data pengguna dengan skip dan limit
-    const users = await User.find().skip(skip).limit(limit);
-    const totalUsers = await User.countDocuments();  // Menghitung total pengguna
-    const totalPages = Math.ceil(totalUsers / limit);  // Menghitung total halaman
+        // Jika limit adalah 0 (untuk "All"), set limit ke angka besar (misalnya 1000)
+        const actualLimit = limit === 0 ? 1000 : limit;
 
-    // Mengembalikan data pengguna beserta informasi pagination
-    res.status(200).json({ 
-      users,
-      totalPages
-    });
-  } catch (err) {
-    next(err); // Jika terjadi error, lanjutkan ke error handler
-  }
+        // Buat filter pencarian
+        const searchFilter = {
+            $or: [
+                { name: { $regex: searchQuery, $options: 'i' } }, // Case-insensitive search for name
+                { phone: { $regex: searchQuery, $options: 'i' } } // Case-insensitive search for phone
+            ]
+        };
+
+        // Cari pengguna berdasarkan filter, pagination, dan sorting
+        const users = await User.find(searchFilter)
+            .skip(skip)
+            .limit(actualLimit)
+            .sort({ [sortBy]: sortOrder });
+
+        const totalUsers = await User.countDocuments(searchFilter); // Hitung jumlah total user yang sesuai filter
+
+        res.json({
+            users,
+            currentPage: page,
+            totalPages: Math.ceil(totalUsers / actualLimit),
+            totalUsers
+        });
+    } catch (err) {
+        next(err); // Jika error, lanjutkan ke handler
+    }
 });
 
-// Menambahkan pengguna baru (API POST /users)
+// Endpoint untuk menambah pengguna
 router.post('/', async (req, res, next) => {
-  try {
-    const { name, phone } = req.body;
-    const newUser = new User({
-      name,
-      phone
-    });
+    try {
+        const { name, phone } = req.body;
 
-    await newUser.save();  // Menyimpan pengguna baru ke MongoDB
-    res.status(201).json(newUser); // Mengembalikan pengguna yang baru dibuat dalam format JSON
-  } catch (err) {
-    next(err);
-  }
+        if (!name || !phone) {
+            return res.status(400).json({ error: 'Name and phone are required' });
+        }
+
+        const newUser = new User({ name, phone });
+        await newUser.save();
+        res.status(201).json(newUser);
+    } catch (err) {
+        next(err);
+    }
 });
 
-// Mengambil pengguna berdasarkan ID (API GET /users/:id)
+// Mendapatkan pengguna berdasarkan ID
 router.get('/:id', async (req, res, next) => {
-  const { id } = req.params;
-  try {
-    const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    const { id } = req.params;
+    try {
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.status(200).json(user);
+    } catch (err) {
+        next(err);
     }
-    res.status(200).json(user);  // Mengembalikan data pengguna dalam format JSON
-  } catch (err) {
-    next(err);
-  }
 });
 
-// Mengupdate pengguna (API PUT /users/:id)
+// Mengupdate pengguna
 router.put('/:id', async (req, res, next) => {
-  const { id } = req.params;
-  const { name, phone } = req.body;
+    const { id } = req.params;
+    const { name, phone } = req.body;
 
-  try {
-    const result = await User.findByIdAndUpdate(id, { name, phone }, { new: true });
-    if (!result) {
-      return res.status(404).json({ error: 'User not found' });
+    try {
+        const updatedUser = await User.findByIdAndUpdate(id, { name, phone }, { new: true });
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.status(200).json(updatedUser);
+    } catch (err) {
+        next(err);
     }
-    res.status(200).json(result);  // Mengembalikan data pengguna yang sudah diperbarui
-  } catch (err) {
-    next(err);
-  }
 });
 
-// Menghapus pengguna (API DELETE /users/:id)
+// Menghapus pengguna
 router.delete('/:id', async (req, res, next) => {
-  const { id } = req.params;
-  try {
-    const user = await User.findByIdAndDelete(id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    try {
+        const deletedUser = await User.findByIdAndDelete(req.params.id);
+        if (!deletedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.status(200).json({ message: 'User deleted successfully', deletedUser });
+    } catch (err) {
+        next(err);
     }
-    res.status(200).json({ message: 'User deleted successfully', user }); // Mengembalikan pesan sukses
-  } catch (err) {
-    next(err);
-  }
 });
 
 export default router;

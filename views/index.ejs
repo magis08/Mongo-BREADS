@@ -154,8 +154,7 @@
 
               userList.innerHTML = ''; // Clear previous user list
 
-              // Fetch users from API with search query, pagination, sorting, and limit
-              fetch(`/api/users?page=${page}&search=${searchQuery}&sortBy=${sortBy}&sortOrder=${sortOrder}&limit=${limit}`)
+              fetch(`/users?page=${page}&search=${searchQuery}&sortBy=${sortBy}&sortOrder=${sortOrder}&limit=${limit}`)
                 .then(response => response.json())
                 .then(data => {
                   // Clear the current table
@@ -171,14 +170,15 @@
                   data.users.forEach((user, index) => {
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                    <th scope="row">${(page - 1) * limit + index + 1}</th>
-                    <td>${user.name}</td>
-                    <td>${user.phone}</td>
-                    <td>
-                      <button class="btn btn-warning editBtn" data-id="${user._id}"><i class="fa-solid fa-pencil"></i></button>
-                      <button class="btn btn-danger deleteBtn" data-id="${user._id}"><i class="fa-solid fa-trash-can"></i></button>
-                    </td>
-                  `;
+          <th scope="row">${(page - 1) * limit + index + 1}</th>
+          <td>${user.name}</td>
+          <td>${user.phone}</td>
+          <td>
+            <button class="btn btn-success editBtn" data-id="${user._id}"><i class="fa-solid fa-pencil"></i></button>
+            <button class="btn btn-danger deleteBtn" data-id="${user._id}"><i class="fa-solid fa-trash-can"></i></button>
+            <button class="btn btn-warning todosBtn" data-id="${user._id}"><i class="fa-solid fa-door-open"></i></button>
+          </td>
+        `;
                     userList.appendChild(row);
                   });
 
@@ -219,15 +219,15 @@
                 const name = document.getElementById('addName').value;
                 const phone = document.getElementById('addPhone').value;
 
-                fetch('/api/users', {
+                fetch('/users', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ name, phone })
                 })
                   .then(response => response.json())
                   .then(() => {
-                    fetchUsers(1, '', sortBy, sortOrder, currentLimit);  // Refresh the user list after adding a new user
-                    modal.hide();  // Close the modal
+                    fetchUsers(1, '', sortBy, sortOrder, currentLimit);
+                    modal.hide();
                     document.getElementById('addName').value = '';
                     document.getElementById('addPhone').value = '';
                   })
@@ -235,58 +235,74 @@
               };
             });
 
+            // Event listener for todos button
+            const userList = document.getElementById('userList');
+            if (userList) {
+              userList.addEventListener('click', (event) => {
+                if (event.target.classList.contains('todosBtn')) {
+                  const userId = event.target.getAttribute('data-id');
+                  // Redirect ke halaman todos untuk user tersebut
+                  window.location.href = `/todos/${userId}`;
+                }
+              });
+            }
+
             // Edit user
-            document.getElementById('userList').addEventListener('click', (event) => {
-              if (event.target.classList.contains('editBtn')) {
-                const userId = event.target.getAttribute('data-id');
+            if (userList) {
+              userList.addEventListener('click', (event) => {
+                if (event.target.classList.contains('editBtn')) {
+                  const userId = event.target.getAttribute('data-id');
 
-                fetch(`/api/users/${userId}`)
-                  .then(response => response.json())
-                  .then(user => {
-                    document.getElementById('editName').value = user.name;
-                    document.getElementById('editPhone').value = user.phone;
+                  fetch(`/users/${userId}`)
+                    .then(response => response.json())
+                    .then(user => {
+                      document.getElementById('editName').value = user.name;
+                      document.getElementById('editPhone').value = user.phone;
 
-                    const modal = new bootstrap.Modal(document.getElementById('editModal'));
-                    modal.show();
+                      const modal = new bootstrap.Modal(document.getElementById('editModal'));
+                      modal.show();
 
-                    document.getElementById('editForm').onsubmit = (e) => {
-                      e.preventDefault();
+                      document.getElementById('editForm').onsubmit = (e) => {
+                        e.preventDefault();
 
-                      const updatedName = document.getElementById('editName').value;
-                      const updatedPhone = document.getElementById('editPhone').value;
+                        const updatedName = document.getElementById('editName').value;
+                        const updatedPhone = document.getElementById('editPhone').value;
 
-                      fetch(`/api/users/${userId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: updatedName, phone: updatedPhone })
-                      })
-                        .then(() => {
-                          fetchUsers(1, currentSearchQuery, sortBy, sortOrder, currentLimit);  // Refresh user list after update
-                          modal.hide();  // Close the modal
+                        fetch(`/users/${userId}`, {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ name: updatedName, phone: updatedPhone })
                         })
-                        .catch(error => console.error('Error updating user:', error));
-                    };
-                  })
-                  .catch(error => console.error('Error fetching user data:', error));
-              }
-            });
+                          .then(() => {
+                            fetchUsers(1, currentSearchQuery, sortBy, sortOrder, currentLimit);  // Refresh user list after update
+                            modal.hide();  // Close the modal
+                          })
+                          .catch(error => console.error('Error updating user:', error));
+                      };
+                    })
+                    .catch(error => console.error('Error fetching user data:', error));
+                }
+              });
+            }
 
             // Show Delete Confirmation Modal
             let currentUserId = '';
-            document.getElementById('userList').addEventListener('click', (event) => {
-              if (event.target.classList.contains('deleteBtn')) {
-                const userId = event.target.getAttribute('data-id');
-                currentUserId = userId;  // Store the selected user ID
+            if (userList) {
+              userList.addEventListener('click', (event) => {
+                if (event.target.classList.contains('deleteBtn')) {
+                  const userId = event.target.getAttribute('data-id');
+                  currentUserId = userId;  // Store the selected user ID
 
-                const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
-                modal.show();
-              }
-            });
+                  const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+                  modal.show();
+                }
+              });
+            }
 
             // Confirm Delete user
             document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
               if (currentUserId) {
-                fetch(`/api/users/${currentUserId}`, { method: 'DELETE' })
+                fetch(`/users/${currentUserId}`, { method: 'DELETE' })
                   .then(() => {
                     fetchUsers(1, currentSearchQuery, sortBy, sortOrder, currentLimit);  // Refresh the list after deleting
                     const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
@@ -326,5 +342,6 @@
             // Initial load of users for the first page
             fetchUsers(1, '', sortBy, sortOrder, currentLimit);
           });
+
 
         </script>

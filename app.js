@@ -7,37 +7,31 @@ import mongoose from 'mongoose';
 // Import routes
 import indexRouter from './routes/index.js';
 import usersRouter from './routes/users.js';
-import todosRouter from './routes/todos.js'; // Route untuk halaman todos (EJS)
-import usersApiRouter from './routes/api/users.js';
-import todosApiRouter from './routes/api/todos.js'; // API route untuk todos
+import todosRouter from './routes/todos.js';
 
 const app = express();
+const __dirname = new URL('.', import.meta.url).pathname;
 
 // MongoDB connection
 mongoose.connect('mongodb://localhost/todos')
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.log('MongoDB connection error:', err));
 
-// Get __dirname using import.meta.url
-const __dirname = new URL('.', import.meta.url).pathname;
-
-// Set up view engine
+// Setup view engine
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
 // Middleware setup
 app.use(logger('dev'));
-app.use(express.json());  // Untuk parse JSON requests
-app.use(express.urlencoded({ extended: false }));  // Untuk parse URL encoded requests
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));  // Untuk file static seperti Bootstrap, FontAwesome, dsb
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Setup routes
-app.use('/', indexRouter);  // Menggunakan indexRouter untuk rendering halaman EJS
-app.use('/users', usersRouter);  // Route untuk manajemen pengguna (web)
-app.use('/api/users', usersApiRouter);  // Gunakan API route untuk operasi CRUD pengguna
-app.use('/api/todos', todosApiRouter);  // API route untuk operasi CRUD todos
-app.use('/todos', todosRouter);  // Route untuk tampilan todos di halaman EJS
+app.use('/', indexRouter);  // Homepage route
+app.use('/users', usersRouter);  // Users route
+app.use('/todos', todosRouter);  // Add this line to make the /todos route work
 
 // Error handling
 app.use((req, res, next) => {
@@ -48,9 +42,10 @@ app.use((req, res, next) => {
 
 app.use((err, req, res, next) => {
   res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};  // Menampilkan error hanya di development
+  res.locals.error = req.app.get('env') === 'development' ? err : {};
   res.status(err.status || 500);
-  res.render('error');  // Render error page jika terjadi kesalahan
+  res.render('error');
 });
 
 export default app;
+
