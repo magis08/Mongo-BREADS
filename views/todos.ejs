@@ -8,7 +8,7 @@
                     <h3 class="mb-0 card-title my-1 flex-grow-1 text-center">Todo List</h3>
                 </div>
                 <div class="card-body">
-                    <!-- Filter Section -->
+
                     <div class="row mb-3">
                         <div class="col-12 col-md-4 col-lg-3 align-self-center">
                             <label for="searchTitle">Title</label>
@@ -57,7 +57,7 @@
                     </div>
                 </div>
                 <hr class="m-0">
-                <!-- Add New Todo -->
+
                 <div class="bg-light">
                     <div class="mx-3">
                         <div class="input-group my-2">
@@ -69,12 +69,10 @@
                 </div>
                 <div class="row m-0">
                     <ul class="list-group p-0" id="todoList">
-                        <!-- todo list goes here -->
                     </ul>
                 </div>
             </div>
 
-            <!-- Todo Modal -->
             <div class="modal fade" id="todoModal" tabindex="-1" aria-labelledby="todoModalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-top modal-dialog-scrollable">
                     <div class="modal-content">
@@ -125,10 +123,10 @@
         </div>
     </div>
 
+
     <%- include('partials/footer') %>
 
         <script>
-            var userId = "<%= userId %>"
             let params = {
                 page: 1,
                 limit: 10,
@@ -140,7 +138,6 @@
                 sortMode: 'desc',
                 executor: '<%= userId %>',
             };
-
 
             let isLoading = false;
             let hasMoreData = true;
@@ -164,39 +161,33 @@
             const deleteTodoTitle = $('#deleteTodoTitle');
 
             const fetchTodos = () => {
-                let fetchUrl = `/todos?page=${params.page}&limit=${params.limit}&sortBy=${params.sortBy}&sortMode=${params.sortMode}`;
+                let fetchUrl = `/todos?executor=${params.executor}&page=${params.page}&limit=${params.limit}&sortBy=${params.sortBy}&sortMode=${params.sortMode}`;
                 if (params.title) fetchUrl += `&title=${params.title}`;
                 if (params.complete) fetchUrl += `&complete=${params.complete}`;
                 if (params.startdateDeadline) fetchUrl += `&startdateDeadline=${new Date(params.startdateDeadline).toISOString()}`;
                 if (params.enddateDeadline) fetchUrl += `&enddateDeadline=${new Date(params.enddateDeadline).toISOString()}`;
 
                 return $.ajax({
-                    url: `/todos/user/${userId}`,
+                    url: fetchUrl,
                     method: 'GET',
-                    dataType: 'json',
-                    success: function (todos) {
-                        renderTodos(todos)
-                    },
-                    error: function (err) {
-                        console.error('Error fetching todos:', err)
-                    }
+                    dataType: 'json'
                 });
             };
 
             const renderTodos = (isAppend = false) => {
                 if (!isAppend) todoList.empty();
                 const placeholder = `
-      <li class="list-group-item border-0 rounded d-flex flex-md-row my-2 justify-content-between align-items-start align-items-md-center position-relative  placeholder-glow">
-        <span class="placeholder col-8"></span>
-        <span class="placeholder col-3"></span>
-      </li>
-    `;
+            <li class="list-group-item border-0 rounded d-flex flex-md-row my-2 justify-content-between align-items-start align-items-md-center position-relative  placeholder-glow">
+              <span class="placeholder col-8"></span>
+              <span class="placeholder col-3"></span>
+            </li>
+          `;
                 todoList.append(placeholder);
 
                 fetchTodos().done(function (todos) {
                     if (todos.data.length === 0) {
-                        hasMoreData = false;
-                        todoList.find('.placeholder-glow').remove();
+                        hasMoreData = false; // Tidak ada data lagi yang bisa dimuat
+                        todoList.find('.placeholder-glow').remove(); // Hapus placeholder
                         return;
                     }
 
@@ -211,40 +202,41 @@
 
                         if (todoList.find(`li[data-id="${todo._id}"]`).length === 0) {
                             const todoItem = `
-            <li class="list-group-item border-0 rounded d-flex flex-md-row my-2 justify-content-between align-items-start align-items-md-center position-relative ${todo.complete ? "bg-success-subtle text-success-emphasis" : passedDeadline ? "bg-danger-subtle text-danger-emphasis" : "bg-secondary-subtle text-secondary-emphasis"
+                  <li class="list-group-item border-0 rounded d-flex flex-md-row my-2 justify-content-between align-items-start align-items-md-center position-relative ${todo.complete ? "bg-success-subtle text-success-emphasis" : passedDeadline ? "bg-danger-subtle text-danger-emphasis" : "bg-secondary-subtle text-secondary-emphasis"
                                 }" data-id="${todo._id}">
-              <p class="fs-6 h-center fw-medium text-start d-flex align-items-center m-0 mb-md-0">${formattedDate} ${todo.title}</p>
-              <div class="d-flex h-center">
-            <button class="btn btn-sm me-2 ${todo.complete ? "text-success-emphasis" : passedDeadline ? "text-danger-emphasis" : "text-secondary-emphasis"
+                    <p class="fs-6 h-center fw-medium text-start d-flex align-items-center m-0 mb-md-0">${formattedDate} ${todo.title}</p>
+                    <div class="d-flex h-center">
+                  <button class="btn btn-sm me-2 ${todo.complete ? "text-success-emphasis" : passedDeadline ? "text-danger-emphasis" : "text-secondary-emphasis"
                                 }" data-bs-toggle="modal" data-bs-target="#todoModal" data-id="${todo._id}" data-title="${todo.title}" data-deadline="${formattedDateYear}" data-complete="${todo.complete
                                 }" data-action="edit"><i class="fa-solid fa-pen"></i></button>
-            <button class="btn btn-sm ${todo.complete ? "text-success-emphasis" : passedDeadline ? "text-danger-emphasis" : "text-secondary-emphasis"
+                  <button class="btn btn-sm ${todo.complete ? "text-success-emphasis" : passedDeadline ? "text-danger-emphasis" : "text-secondary-emphasis"
                                 }" data-bs-toggle="modal" data-bs-target="#todoModal" data-id="${todo._id}" data-title="${todo.title}" data-action="delete"><i class="fa-solid fa-trash"></i></button>
-              </div>
-            </li>
-          `;
+                    </div>
+                  </li>
+                  `;
                             todoList.append(todoItem);
                         }
                     });
                     isLoading = false;
+
                 }).fail(function () {
                     isLoading = false;
                     todoList.find('.placeholder-glow').remove();
                 });
             };
 
-            const addTodo = (title, executorId) => {
+            const addTodo = (title, executor) => {
                 $.ajax({
-                    url: '/todos', // This matches the backend POST route
+                    url: '/todos',
                     method: 'POST',
                     contentType: 'application/json',
-                    data: JSON.stringify({ title, executor: executorId }),
-                    success: function (data) {
-                        console.log('Todo added:', data);
-                        renderTodos();  // Refresh the todo list after adding
+                    data: JSON.stringify({ title, executor }),
+
+                    success: function () {
+                        renderTodos();
                     },
-                    error: function (err) {
-                        console.error('Failed to add todo:', err);
+                    error: function () {
+                        console.error('Failed to add todo');
                     }
                 });
             };
@@ -341,11 +333,12 @@
                         const deadline = moment($('#todoDeadline').val()).toISOString();
                         const complete = $('#todoComplete').prop('checked');
                         $.ajax({
-                            url: `/todos/${id}`,  // PUT to update
+                            url: `/todos/${id}`,
                             method: 'PUT',
                             contentType: 'application/json',
                             data: JSON.stringify({ title, deadline, complete }),
                             success: function () {
+                                params.page = 1;
                                 renderTodos();
                                 todoModal.hide();
                             },
@@ -354,12 +347,12 @@
                             }
                         });
                     }
-
                     if (action === 'delete') {
                         $.ajax({
-                            url: `/todos/${id}`,  // DELETE to remove
+                            url: `/todos/${id}`,
                             method: 'DELETE',
                             success: function () {
+                                params.page = 1;
                                 renderTodos();
                                 todoModal.hide();
                             },
@@ -382,4 +375,5 @@
 
                 renderTodos();
             });
+
         </script>

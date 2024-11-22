@@ -15,7 +15,7 @@ const todoSchema = new Schema({
     },
     deadline: {
         type: Date,
-        required: true,
+        required: false,
     },
     executor: {
         type: mongoose.Schema.Types.ObjectId,

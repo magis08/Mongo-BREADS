@@ -241,8 +241,7 @@
               userList.addEventListener('click', (event) => {
                 if (event.target.classList.contains('todosBtn')) {
                   const userId = event.target.getAttribute('data-id');
-                  // Redirect ke halaman todos untuk user tersebut
-                  window.location.href = `/todos/${userId}`;
+                  window.location.href = `/users/${userId}/todos`;
                 }
               });
             }

@@ -29,9 +29,9 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Setup routes
-app.use('/', indexRouter);  // Homepage route
-app.use('/users', usersRouter);  // Users route
-app.use('/todos', todosRouter);  // Add this line to make the /todos route work
+app.use('/', indexRouter)
+app.use('/users', usersRouter);
+app.use('/todos', todosRouter);
 
 // Error handling
 app.use((req, res, next) => {

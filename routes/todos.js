@@ -1,26 +1,39 @@
 import express from 'express';
-import Todo from '../models/todo.js'; // Sesuaikan path jika model berada di lokasi yang berbeda
-import moment from 'moment'; // Untuk format tanggal
+import Todo from '../models/todo.js';
+import { ObjectId } from 'mongodb';
 
 const router = express.Router();
 
-// API untuk mengambil todos berdasarkan userId dan query params
-router.get('/api/todos/user/:userId', async (req, res) => {
-    const { page = 1, limit = 10, title = '', complete, startdateDeadline, enddateDeadline, sortBy = '_id', sortMode = 'desc' } = req.query;
-    const userId = req.params.userId;
+router.get('/', async (req, res) => {
+    const { page = 1, limit = 10, title, complete, startdateDeadline, enddateDeadline, sortBy = 'deadline', sortMode = 'asc', executor } = req.query;
+    const query = {};
+    if (title) query.title = { $regex: title, $options: 'i' };
+    if (complete !== undefined) query.complete = complete === 'true';
+    if (startdateDeadline || enddateDeadline) {
+        query.deadline = {};
+        if (startdateDeadline && enddateDeadline) {
+            // convert object date to iso string
+            // covert iso string to object date
+            query.deadline = { $gte: new Date(startdateDeadline).toISOString(), $lte: new Date(enddateDeadline).toISOString() };
+            query.deadline = { $gte: new Date(startdateDeadline), $lte: new Date(enddateDeadline) };
+        } else if (startdateDeadline) {
+            query.deadline = { $gte: new Date(startdateDeadline).toISOString() };
+            query.deadline = { $gte: new Date(startdateDeadline) };
+        } else if (enddateDeadline) {
+            query.deadline = { $lte: new Date(enddateDeadline).toISOString() };
+            query.deadline = { $lte: new Date(enddateDeadline) };
+        }
+    }
+    if (executor) query.executor = new ObjectId(executor);
+
+    const sort = { [sortBy]: sortMode === 'desc' ? -1 : 1 };
+    const offset = (page - 1) * limit;
 
     try {
-        const query = { executor: userId };
-
-        if (title) query.title = { $regex: title, $options: 'i' };
-        if (complete !== undefined) query.complete = complete === 'true';
-        if (startdateDeadline) query.deadline = { $gte: moment(startdateDeadline).toISOString() };
-        if (enddateDeadline) query.deadline = { $lte: moment(enddateDeadline).toISOString() };
-
         const todos = await Todo.find(query)
             .sort({ [sortBy]: sortMode === 'asc' ? 1 : -1 })
             .skip((page - 1) * limit)
-            .limit(Number(limit));
+            .limit(parseInt(limit));
 
         const totalCount = await Todo.countDocuments(query);
         const totalPages = Math.ceil(totalCount / limit);
@@ -37,16 +50,17 @@ router.get('/api/todos/user/:userId', async (req, res) => {
     }
 });
 
-// API untuk menambah todo baru
-router.post('/api/todos', async (req, res) => {
-    const { title, executor } = req.body;
 
+// CREATE TODO
+router.post('/', async (req, res) => {
+    const { title, executor } = req.body;
+    const defaultDeadline = new Date()
     try {
         const newTodo = new Todo({
             title,
             executor,
             complete: false,
-            deadline: null
+            deadline: defaultDeadline
         });
         await newTodo.save();
         res.status(201).json(newTodo);
@@ -56,8 +70,8 @@ router.post('/api/todos', async (req, res) => {
     }
 });
 
-// API untuk mengedit todo
-router.put('/api/todos/:id', async (req, res) => {
+// UPDATE TODO
+router.put('/:id', async (req, res) => {
     const { title, deadline, complete } = req.body;
     const todoId = req.params.id;
 
@@ -73,8 +87,8 @@ router.put('/api/todos/:id', async (req, res) => {
     }
 });
 
-// API untuk menghapus todo
-router.delete('/api/todos/:id', async (req, res) => {
+// DELETE TODO
+router.delete('/:id', async (req, res) => {
     const todoId = req.params.id;
 
     try {
@@ -89,16 +103,5 @@ router.delete('/api/todos/:id', async (req, res) => {
     }
 });
 
-// View rendering: Menampilkan todos berdasarkan userId
-router.get('/todos/:userId', async (req, res) => {
-    const userId = req.params.userId;
-    try {
-        const todos = await Todo.find({ executor: userId });
-        res.render('todos', { userId, todos });
-    } catch (err) {
-        console.error('Error fetching todos:', err);
-        res.status(500).send('Error fetching todos');
-    }
-});
 
 export default router;
